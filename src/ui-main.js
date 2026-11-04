@@ -15,14 +15,14 @@ function viewFor() {
     case 'agr': return id ? vAgr(id) : vAgrList(); case 'rt': return id ? vRT(id) : vRTList();
     case 'bp': case 'loc': case 'zone': case 'lane': case 'sched': case 'res': case 'prod': return vMD(a);
     case 'analytics': return vAnalytics(); case 'log': return vLog(); case 'cfg': return vCfg(); case 'sys': return vSys();
-    case 'ex': return vEx(); case 'gloss': return vGloss();
+    case 'ex': return MODE === 'free' ? vLaunchpad() : vEx(); case 'gloss': return vGloss();
   }
   return vLaunchpad();
 }
 function shell() {
   const t = U.app === 'home' ? 'Página inicial' : appTitle(U.app);
   return `<header class="shell"><button class="ibtn logo" data-a="home" aria-label="Página inicial"><b>SAP</b><span>Transportation Management</span></button>
-    ${U.app !== 'home' ? `<button class="ibtn" data-a="back" aria-label="Voltar">←</button>` : ''}<span class="title">${esc(t)}</span><span class="sp"></span>
+    ${U.app !== 'home' ? `<button class="ibtn" data-a="back" aria-label="Voltar">←</button>` : ''}<span class="title">${esc(t)}</span><button class="mode-chip ${MODE}" data-a="modeSwitch" title="Voltar à tela inicial e escolher o modo">${MODE === 'free' ? 'Modo livre' : 'Modo exercícios'} <span aria-hidden="true">⇄</span></button><span class="sp"></span>
     <input class="search" id="gsearch" placeholder="Nº do documento ou app" aria-label="Pesquisar documento ou app">
     <span class="clock clock-l" title="Data do sistema">${dt(S.clock)}</span>
     <button class="ibtn" data-a="clock" data-h="1" title="Avançar 1 hora">+1h</button><button class="ibtn" data-a="clock" data-h="24" title="Avançar 1 dia">+1d</button>
@@ -36,11 +36,12 @@ function crumbs() {
 function footer() {
   const m = U.lastMsgs; const c = t => m.filter(x => x.type === t).length;
   const last = m[m.length - 1] || S.log[0];
-  return `<div class="footer"><div class="msgs">${['E', 'W', 'S'].filter(t => c(t)).map(t => `<button class="mcount" data-a="pop"><span class="mi ${t}">${{ E: '✕', W: '!', S: '✓' }[t]}</span>${c(t)}</button>`).join('')}<button class="mcount" data-a="pop" title="Mensagens">Mensagens</button><span class="last">${last ? `<span class="mi ${last.type}">${{ S: '✓', W: '!', E: '✕', I: 'i' }[last.type]}</span> ${esc(last.text)}` : ''}</span></div>${btn('Exercícios', 'go', { app: 'ex' })}</div>
+  return `<div class="footer"><div class="msgs">${['E', 'W', 'S'].filter(t => c(t)).map(t => `<button class="mcount" data-a="pop"><span class="mi ${t}">${{ E: '✕', W: '!', S: '✓' }[t]}</span>${c(t)}</button>`).join('')}<button class="mcount" data-a="pop" title="Mensagens">Mensagens</button><span class="last">${last ? `<span class="mi ${last.type}">${{ S: '✓', W: '!', E: '✕', I: 'i' }[last.type]}</span> ${esc(last.text)}` : ''}</span></div>${MODE === 'free' ? btn('Fluxo do processo', 'go', { app: 'home' }) : btn('Exercícios', 'go', { app: 'ex' })}</div>
   ${U.pop ? `<div class="pop" role="dialog" aria-label="Mensagens"><div class="row" style="justify-content:space-between"><b>Mensagens da última ação</b><button class="btn ghost" data-a="go" data-app="log">Ver log completo</button></div>${(m.length ? m : S.log.slice(0, 8)).map(x => `<div class="row"><span class="mi ${x.type}">${{ S: '✓', W: '!', E: '✕', I: 'i' }[x.type]}</span><div style="min-width:0">${esc(x.text)}${x.ref && docApp(x.ref) ? ' ' + L(x.ref) : ''}</div></div>`).join('')}</div>` : ''}`;
 }
 function render() {
   const root = document.getElementById('app'); if (!root) return;
+  if (!MODE) { root.innerHTML = vModePicker() + renderDlg() + `<div class="toast" id="toast" ${U.toast ? '' : 'hidden'}>${U.toast ? esc(U.toast.text) : ''}</div>`; return; }
   const y = window.scrollY; const key = U.app + '|' + U.id;
   let main = '';
   try { main = viewFor(); } catch (e) { console.error(e); main = `<div class="strip E"><span class="mi E">✕</span>Erro ao exibir a tela: ${esc(e.message)}</div>`; }
@@ -158,6 +159,8 @@ const A = {
   exportJ: () => { const j = JSON.stringify(S); dialog('Exportar estado', `<p class="muted small">Copie e guarde este JSON. Para restaurar, use “Importar estado”.</p><textarea id="dl_json" class="inp" style="height:260px;width:100%;font-family:var(--f-mono);font-size:11px" readonly>${esc(j)}</textarea>`, [{ l: 'Copiar', cls: 'pri', fn: () => { const t = document.getElementById('dl_json'); (navigator.clipboard ? navigator.clipboard.writeText(j) : Promise.reject()).then(() => toast('JSON copiado.')).catch(() => { t.focus(); t.select(); toast('Selecionado: use Ctrl+C.'); }); } }], true); },
   importJ: () => dialog('Importar estado', '<textarea id="dl_json" class="inp" style="height:260px;width:100%;font-family:var(--f-mono);font-size:11px" placeholder="Cole aqui o JSON exportado"></textarea>', [{ l: 'Importar', cls: 'pri', fn: () => { try { const x = JSON.parse(val('dl_json')); if (x.v !== 3 || !x.md) throw new Error('formato'); S = x; U.dlg = null; U.app = 'home'; U.id = null; act(() => T.ok('Estado importado.')); } catch (e) { toast('JSON inválido para este simulador.', 'E'); } } }], true),
   resetAsk: d => dialog('Reinicializar sistema', `<p>${d.demo === '1' ? 'Restaurar o cenário de demonstração' : 'Começar apenas com dados mestres'}? Todos os documentos atuais serão apagados.</p>`, [{ l: 'Reinicializar', cls: 'neg', fn: () => { newState(d.demo === '1'); U.dlg = null; U.lastMsgs = []; U.ck = { sel: new Set(), doc: null, res: null, mode: 'RD', zone: '', showPlanned: false }; U.stack = []; save(); go('home', null, null, false); toast('Sistema reinicializado.'); } }]),
+  modeSwitch: () => { save(); flushSave(); MODE = null; U.toast = null; DBREF = null; U.cloud = false; U.dlg = null; U.menu = null; U.pop = false; render(); window.scrollTo(0, 0); },
+  modeEnter: d => enterMode(d.m),
   exToggle: d => { const e = EXERCISES.find(x => x.id === d.id); const cur = U.exOpen[d.id] ?? (!exDone(e) && EXERCISES.findIndex(x => !exDone(x)) === EXERCISES.indexOf(e)); U.exOpen[d.id] = !cur; render(); },
   exGo: d => { const e = EXERCISES.find(x => x.id === d.id); go(e.app, e.appId || null, e.appTab || null); }
 };
@@ -223,15 +226,45 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'gsearch') {
     const q = e.target.value.trim(); if (!q) return;
     if (/^\d{8,10}$/.test(q)) { const a = docApp(q); const exists = a && ({ fwo: T.fwo, fwq: T.fwq, otr: T.otr, fu: T.fu, fo: T.fo, fsd: T.fsd, fwsd: T.fwsd, rfq: T.rfq }[a])(q); if (exists) return openDoc(q); return toast('Documento ' + q + ' não encontrado.', 'E'); }
-    const hit = Object.entries(APPS).find(([k, v]) => (v[0] + ' ' + v[1]).toLowerCase().includes(q.toLowerCase())); if (hit) go(hit[0]); else toast('Nada encontrado para “' + q + '”.', 'W');
+    const hit = Object.entries(APPS).filter(([k]) => !(MODE === 'free' && k === 'ex')).find(([k, v]) => (v[0] + ' ' + v[1]).toLowerCase().includes(q.toLowerCase())); if (hit) go(hit[0]); else toast('Nada encontrado para “' + q + '”.', 'W');
   }
 });
 
 /* ---------------- inicialização ---------------- */
 (function init() {
   try { const t = localStorage.getItem('sap-tm-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { }
-  const had = load();
-  if (!had) save();
-  render();
-  setTimeout(connectDB, 50);
+  render(); // tela inicial: escolha do modo
 })();
+function resetUI() {
+  Object.assign(U, { app: 'home', id: null, tab: null, stack: [], f: {}, sel: new Set(), dlg: null, pop: false, form: null, menu: null, ck: { sel: new Set(), doc: null, res: null, mode: 'RD', zone: '', showPlanned: false }, exOpen: {}, lastMsgs: [] });
+}
+function enterMode(m) {
+  MODE = m; DBREF = null; U.cloud = false; resetUI();
+  try { localStorage.setItem('sap-tm-mode', m); } catch (e) { }
+  // Modo exercícios começa com o cenário de demonstração; modo livre começa só com dados mestres.
+  if (!load()) { newState(m === 'ex'); S.savedAt = null; }
+  render(); window.scrollTo(0, 0);
+  setTimeout(connectDB, 50);
+}
+function modeSummary(m) {
+  const x = readState(m); if (!x) return null;
+  const docs = x.fwo.length + x.fwq.length + x.otr.length + x.fo.length;
+  let done = null;
+  if (m === 'ex') { const keep = S; try { S = x; done = EXERCISES.filter(exDone).length; } catch (e) { } S = keep; }
+  return { docs, done, savedAt: x.savedAt, clock: x.clock };
+}
+function vModePicker() {
+  const ex = modeSummary('ex'), fr = modeSummary('free');
+  let last = null; try { last = localStorage.getItem('sap-tm-mode'); } catch (e) { }
+  const when = s => s && s.savedAt ? 'Última gravação ' + new Date(s.savedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  const card = (m, title, tag, desc, bullets, status, cta) => `<section class="mode-card ${m}${last === m ? ' last' : ''}"><div class="mode-ic">${ic(m === 'ex' ? 'school' : 'cockpit')}</div><div class="mode-tag">${esc(tag)}</div><h2>${esc(title)}</h2><p>${esc(desc)}</p><ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul><div class="mode-st">${status}</div><button class="btn pri" data-a="modeEnter" data-m="${m}">${esc(cta)}</button></section>`;
+  return `<header class="shell"><span class="ibtn logo" style="cursor:default"><b>SAP</b><span>Transportation Management</span></span><span class="sp"></span><button class="ibtn" data-a="theme" title="Tema claro/escuro" aria-label="Alternar tema" style="font-size:18px">◐</button></header>
+  <main class="mode-pick"><h1>Simulador SAP TM · S/4HANA</h1><p class="muted lead">Como você quer treinar hoje? Os dois modos usam o mesmo sistema, mas cada um guarda seus próprios documentos: o que você fizer no modo livre não mexe no progresso dos exercícios.</p>
+  <div class="mode-grid">
+  ${card('ex', 'Modo exercícios', 'Guiado', 'Roteiro com 19 exercícios que seguem os capítulos do livro e são verificados automaticamente.', ['Cenário de demonstração com ordens em vários estágios', 'Passo a passo e dicas em cada exercício', 'Progresso salvo e marcado como concluído'],
+    ex ? `<b>${ex.done ?? 0} de ${EXERCISES.length}</b> exercícios concluídos<br><span class="muted small">${esc(when(ex))}</span>` : '<span class="muted">Ainda não iniciado</span>', ex ? 'Continuar exercícios' : 'Começar exercícios')}
+  ${card('free', 'Modo livre', 'Sem roteiro', 'Simule os processos do jeito que quiser, sem exercícios nem verificação, como num sistema de verdade.', ['Começa só com os dados mestres: você cria tudo', 'Pedido → UF → planejamento → OF → transportadora → execução → liquidação', 'Pode carregar dados de exemplo ou zerar quando quiser'],
+    fr ? `<b>${fr.docs}</b> documento${fr.docs === 1 ? '' : 's'} criado${fr.docs === 1 ? '' : 's'} · data do sistema ${esc(dt(fr.clock))}<br><span class="muted small">${esc(when(fr))}</span>` : '<span class="muted">Ambiente novo</span>', fr ? 'Continuar simulação livre' : 'Entrar no modo livre')}
+  </div>
+  <p class="muted small" style="margin-top:22px">Você pode trocar de modo a qualquer momento pelo botão de modo na barra superior. Projeto educacional independente, sem vínculo com a SAP SE. SAP, S/4HANA e SAP TM são marcas da SAP SE, citadas apenas para fins de estudo.</p></main>`;
+}

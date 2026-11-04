@@ -145,7 +145,7 @@ function vSys() {
       <div class="form" style="margin-top:12px">${fld('Definir data/hora', `<input type="datetime-local" id="sys_clock" value="${S.clock}">`)}<div class="fld"><label>&nbsp;</label>${btn('Aplicar', 'clockSet')}</div></div></div>
     <div class="sec"><h3>Armazenamento</h3>${kvs([['Navegador', 'Estado salvo localmente a cada ação'], ['Nuvem (sua conta)', U.cloud ? st('Sincronizado') : st('Indisponível nesta visualização')], ['Última gravação', S.savedAt ? new Date(S.savedAt).toLocaleString('pt-BR') : '—']])}
       <div class="toolbar" style="margin-top:12px">${btn('Exportar estado (JSON)', 'exportJ')}${btn('Importar estado…', 'importJ')}</div></div>
-    <div class="sec"><h3>Reinicializar</h3><p class="muted">Recria os dados mestres e o cenário de demonstração (6 ordens em estágios diferentes). Seu progresso nos exercícios é zerado.</p><div class="toolbar">${btn('Restaurar cenário de demonstração', 'resetAsk', { demo: 1 }, 'neg')}${btn('Começar só com dados mestres', 'resetAsk', { demo: 0 }, 'neg')}</div></div></div>`;
+    <div class="sec"><h3>Reinicializar</h3><p class="muted">${MODE === 'free' ? 'Apaga os documentos do modo livre. Você pode recomeçar só com os dados mestres ou com os dados de exemplo (6 ordens em estágios diferentes). O modo exercícios não é afetado.' : 'Recria os dados mestres e o cenário de demonstração (6 ordens em estágios diferentes). Seu progresso nos exercícios é zerado. O modo livre não é afetado.'}</p><div class="toolbar">${btn('Restaurar cenário de demonstração', 'resetAsk', { demo: 1 }, 'neg')}${btn('Começar só com dados mestres', 'resetAsk', { demo: 0 }, 'neg')}</div></div></div>`;
 }
 
 /* ---------------- Treinamento ---------------- */

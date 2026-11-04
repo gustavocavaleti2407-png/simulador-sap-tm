@@ -241,6 +241,39 @@ svg text { fill: var(--fg); }
 .hbar .b { height: 14px; background: var(--accent); border-radius: 2px; min-width: 2px; }
 .hbar .b.alt { background: var(--pos); }
 @media (prefers-reduced-motion: no-preference) { .tile, .btn, .tab { transition: background .12s, border-color .12s, color .12s; } }
+/* Tela inicial: escolha do modo */
+.mode-pick { max-width: 980px; margin: 0 auto; padding: 32px 16px 40px; }
+.mode-pick h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; }
+.mode-pick .lead { max-width: 720px; margin: 0 0 22px; font-size: 15px; }
+.mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.mode-card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 22px; display: flex; flex-direction: column; gap: 8px; border-top: 4px solid var(--accent); }
+.mode-card.free { border-top-color: var(--pos); }
+.mode-card.last { outline: 1px solid var(--line-2); }
+.mode-card h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.mode-card p { margin: 0; color: var(--fg-2); }
+.mode-card ul { margin: 4px 0 6px; padding-left: 18px; color: var(--fg-2); font-size: 13.5px; }
+.mode-card ul li { margin: 2px 0; }
+.mode-card .mode-ic .ic { width: 34px; height: 34px; color: var(--accent); }
+.mode-card.free .mode-ic .ic { color: var(--pos); }
+.mode-tag { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.mode-st { margin-top: auto; padding: 10px 12px; background: var(--surface-2); border-radius: 4px; font-size: 13.5px; }
+.mode-card .btn { align-self: flex-start; margin-top: 4px; }
+.mode-chip { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); color: var(--shell-fg); border-radius: 12px; font-size: 12px; padding: 2px 10px; cursor: pointer; white-space: nowrap; }
+.mode-chip:hover { background: rgba(255,255,255,.22); }
+.mode-chip.free { border-color: rgba(120,220,140,.6); }
+@media (max-width: 560px) { .mode-chip { font-size: 0; padding: 2px 8px; } .mode-chip span { font-size: 13px; } }
+/* Modo livre: fluxo do processo */
+.start-free { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 18px; border-left: 3px solid var(--pos); }
+.start-free > div:first-child { flex: 1 1 380px; }
+.flow { list-style: none; margin: 0; padding: 0; display: grid; align-items: stretch; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; counter-reset: none; }
+.flow > li { margin: 0; align-self: stretch; background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.fl-hd { display: flex; align-items: center; gap: 8px; }
+.fl-n { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.fl-apps { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.fl-app { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; background: var(--surface-2); border: 1px solid transparent; border-radius: 4px; padding: 6px 8px; cursor: pointer; text-align: left; font-size: 13px; }
+.fl-app:hover { border-color: var(--accent); }
+.fl-k { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fl-k small { color: var(--fg-3); font-weight: 400; }
 
 </style>
 </head>
@@ -1398,7 +1431,7 @@ function newState(withDemo = true) {
   S = { v: 3, clock: '2026-10-12T08:00', seq: {}, md: SEED_MASTER(), fwq: [], fwo: [], otr: [], fu: [], fo: [], rfq: [], fsd: [], fwsd: [], log: [], flags: {}, savedAt: null };
   if (withDemo) buildDemo();
   OUT.length = 0;
-  S.log = [{ type: 'I', text: 'Sistema inicializado com dados de demonstração. Data do sistema: 12/10/2026 08:00.', at: S.clock }];
+  S.log = [{ type: 'I', text: (withDemo ? 'Sistema inicializado com dados de demonstração.' : 'Sistema inicializado só com dados mestres.') + ' Data do sistema: 12/10/2026 08:00.', at: S.clock }];
   S.flags = {};
   S.seed = { locs: S.md.locs.length, lanes: S.md.lanes.length, bps: S.md.bps.length, fwo: S.fwo.map(x => x.id), fo: S.fo.map(x => x.id), fsd: S.fsd.map(x => x.id), fwsd: S.fwsd.map(x => x.id), otr: S.otr.map(x => x.id) };
   return S;
@@ -1562,7 +1595,11 @@ const GLOSSARY = [
 /* ==========================================================================
    Núcleo da interface: persistência, navegação, componentes Fiori
    ========================================================================== */
-const LS_KEY = 'sap-tm-simulador-v3';
+/* Modo de uso: 'ex' (exercícios guiados) ou 'free' (simulação livre). Cada modo tem seu próprio estado. */
+let MODE = null;
+const LS_KEYS = { ex: 'sap-tm-simulador-v3', free: 'sap-tm-simulador-livre-v3' };
+const CLOUD_DOC = { ex: 'tm_state', free: 'tm_state_livre' };
+const lsKey = () => LS_KEYS[MODE || 'ex'];
 const U = { app: 'home', id: null, tab: null, stack: [], f: {}, sel: new Set(), dlg: null, pop: false, toast: null, form: null, ck: { sel: new Set(), doc: null, res: null, mode: 'RD', zone: '', showPlanned: false }, exOpen: {}, lastMsgs: [] };
 let DB = null, DBREF = null, saveTimer = null;
 
@@ -1575,24 +1612,28 @@ const d10 = iso => iso ? dt(iso.slice(0, 10)) : '—';
 
 /* ---------- persistência ---------- */
 function save() {
+  if (!MODE || !S) return;
   S.savedAt = new Date().toISOString();
-  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) { }
+  try { localStorage.setItem(lsKey(), JSON.stringify(S)); } catch (e) { }
   if (DBREF) { clearTimeout(saveTimer); saveTimer = setTimeout(() => { DBREF.set({ json: JSON.stringify(S), savedAt: S.savedAt }).catch(() => { }); }, 1200); }
 }
-function load() {
-  try { const raw = localStorage.getItem(LS_KEY); if (raw) { const x = JSON.parse(raw); if (x && x.v === 3) { S = x; return true; } } } catch (e) { }
-  newState(true); return false;
-}
+function flushSave() { if (DBREF && S) { clearTimeout(saveTimer); DBREF.set({ json: JSON.stringify(S), savedAt: S.savedAt || new Date().toISOString() }).catch(() => { }); } }
+function readState(m) { try { const raw = localStorage.getItem(LS_KEYS[m]); if (raw) { const x = JSON.parse(raw); if (x && x.v === 3) return x; } } catch (e) { } return null; }
+function load() { const x = readState(MODE); if (x) { S = x; return true; } return false; }
 async function connectDB() {
   try {
-    if (!window.claude || !window.claude.use) return;
+    if (!window.claude || !window.claude.use || !MODE) return;
+    const m = MODE;
     const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
     if (!db || !user) return;
     const uid = await user.id(); if (!uid) return;
-    DBREF = db.collection('data/users/' + uid).doc('tm_state');
-    const snap = await DBREF.get();
+    if (MODE !== m) return;
+    const ref = db.collection('data/users/' + uid).doc(CLOUD_DOC[m]);
+    const snap = await ref.get();
+    if (MODE !== m) return;
+    DBREF = ref;
     const data = snap && (snap.data ? (typeof snap.data === 'function' ? snap.data() : snap.data) : null);
-    if (data && data.json && (!S.savedAt || data.savedAt > S.savedAt)) { const x = JSON.parse(data.json); if (x.v === 3) { S = x; try { localStorage.setItem(LS_KEY, data.json); } catch (e) { } render(); toast('Estado restaurado do armazenamento na nuvem.'); } }
+    if (data && data.json && (!S.savedAt || data.savedAt > S.savedAt)) { const x = JSON.parse(data.json); if (x.v === 3) { S = x; try { localStorage.setItem(lsKey(), data.json); } catch (e) { } render(); toast('Estado restaurado do armazenamento na nuvem.'); } }
     else save();
     U.cloud = true; render();
   } catch (e) { }
@@ -1796,11 +1837,33 @@ function tileKPI(a) {
     default: return null;
   }
 }
+const FLOW = [
+  ['1', 'Pedido', 'OE, cotação ou pedido de venda', ['fwo', 'otr', 'fwq']],
+  ['2', 'Unidades de frete', 'FUBR cria as UFs', ['fu']],
+  ['3', 'Planejamento', 'Cockpit, otimizador, capacidade', ['cockpit', 'cap']],
+  ['4', 'Ordem de frete', 'OF rodoviária ou booking', ['fo', 'fb']],
+  ['5', 'Subcontratação', 'Seleção, tendering, portal', ['tender', 'portal']],
+  ['6', 'Execução', 'Eventos e rastreamento', ['em']],
+  ['7', 'Liquidação', 'Compra (DLF) e venda (DLE)', ['fsd', 'fwsd']],
+  ['8', 'Análise', 'Custos e rentabilidade', ['analytics']]
+];
+function vFlow() {
+  return `<section class="lp-group"><h2>Fluxo do processo <small>clique numa etapa para abrir o app</small></h2><ol class="flow">${FLOW.map(([n, t, s, apps]) => `<li><div class="fl-hd"><span class="fl-n">${n}</span><b>${esc(t)}</b></div><div class="muted small">${esc(s)}</div><div class="fl-apps">${apps.map(a => { const k = tileKPI(a); return `<button class="fl-app" data-a="go" data-app="${a}"><span>${esc(APPS[a][0])}</span>${k ? `<span class="fl-k">${esc(k[0])} <small>${esc(k[1])}</small></span>` : ''}</button>`; }).join('')}</div></li>`).join('')}</ol></section>`;
+}
 function vLaunchpad() {
-  const groups = GROUPS.map(([g, ref, apps]) => `<section class="lp-group"><h2>${esc(g)} <small>${esc(ref)}</small></h2><div class="tiles">${apps.map(a => {
+  const free = MODE === 'free';
+  const groups = (free ? [...GROUPS.slice(1), ['Apoio', 'consulta', ['gloss']]] : GROUPS).map(([g, ref, apps]) => `<section class="lp-group"><h2>${esc(g)} <small>${esc(ref)}</small></h2><div class="tiles">${apps.map(a => {
     const [t, s, i] = APPS[a]; const k = tileKPI(a);
     return `<button class="tile" data-a="go" data-app="${a}"><span class="t">${esc(t)}</span><span class="s">${esc(s)}</span><span class="k">${ic(i)}${k ? `<span><span class="v">${esc(k[0])}</span><br><span class="u">${esc(k[1])}</span></span>` : ''}</span></button>`;
   }).join('')}</div></section>`).join('');
+  if (free) {
+    const empty = !S.fwo.length && !S.fwq.length && !S.otr.length && !S.fo.length;
+    return `<div class="lp-head"><div><h1>Simulador SAP TM · Modo livre</h1><div class="muted">${esc(S.md.org.company)} · Org. vendas ${S.md.org.salesOrg} · Org. compras ${S.md.org.purchOrg} · Unid. planejamento ${S.md.org.planOrg}</div></div>
+    <div class="toolbar">${btn('Criar ordem de expedição', 'go', { app: 'fwo-new' }, 'pri')}${btn('Criar pedido de venda', 'go', { app: 'so-new' })}${btn('Criar cotação', 'go', { app: 'fwq-new' })}</div></div>
+    ${empty ? `<div class="sec start-free"><div><h3 style="margin:0 0 4px">Ambiente pronto para simular</h3><p class="muted" style="margin:0">Só os dados mestres estão carregados (parceiros, locais, rotas, veículos, acordos e tabelas). Crie seu primeiro pedido e leve-o pelo fluxo abaixo, ou carregue os dados de exemplo para ter documentos em vários estágios.</p></div><div class="toolbar">${btn('Criar ordem de expedição', 'go', { app: 'fwo-new' }, 'pri')}${btn('Carregar dados de exemplo', 'resetAsk', { demo: 1 })}</div></div>`
+      : `<div class="note" style="margin-bottom:18px">Modo livre: sem exercícios nem verificação. Use os apps na ordem que quiser. O tempo só avança quando você manda (+1h / +1d na barra superior). Para recomeçar, vá em Sistema › Reinicializar.</div>`}
+    ${vFlow()}${groups}<p class="muted" style="margin-top:24px;font-size:12px">Projeto educacional independente, sem vínculo com a SAP SE. SAP, S/4HANA e SAP TM são marcas da SAP SE, citadas apenas para fins de estudo. Os dados ficam salvos só no seu navegador.</p>`;
+  }
   return `<div class="lp-head"><div><h1>Simulador SAP TM · S/4HANA</h1><div class="muted">${esc(S.md.org.company)} · Org. vendas ${S.md.org.salesOrg} · Org. compras ${S.md.org.purchOrg} · Unid. planejamento ${S.md.org.planOrg}</div></div>
   <div class="toolbar">${btn('Exercícios guiados', 'go', { app: 'ex' }, 'pri')}${btn('Criar ordem de expedição', 'go', { app: 'fwo-new' })}</div></div>
   <div class="note" style="margin-bottom:18px">Ambiente de treinamento com dados fictícios. O fluxo segue o livro: pedido (OE) → unidades de frete → planejamento (cockpit/otimizador) → ordem de frete ou booking → seleção de transportadora/tendering → execução e eventos → liquidação e rentabilidade. A data do sistema só avança quando você manda (botão do relógio na barra superior).</div>${groups}<p class="muted" style="margin-top:24px;font-size:12px">Projeto educacional independente, sem vínculo com a SAP SE. SAP, S/4HANA e SAP TM são marcas da SAP SE, citadas apenas para fins de estudo. Os dados ficam salvos só no seu navegador.</p>`;
@@ -2273,7 +2336,7 @@ function vSys() {
       <div class="form" style="margin-top:12px">${fld('Definir data/hora', `<input type="datetime-local" id="sys_clock" value="${S.clock}">`)}<div class="fld"><label>&nbsp;</label>${btn('Aplicar', 'clockSet')}</div></div></div>
     <div class="sec"><h3>Armazenamento</h3>${kvs([['Navegador', 'Estado salvo localmente a cada ação'], ['Nuvem (sua conta)', U.cloud ? st('Sincronizado') : st('Indisponível nesta visualização')], ['Última gravação', S.savedAt ? new Date(S.savedAt).toLocaleString('pt-BR') : '—']])}
       <div class="toolbar" style="margin-top:12px">${btn('Exportar estado (JSON)', 'exportJ')}${btn('Importar estado…', 'importJ')}</div></div>
-    <div class="sec"><h3>Reinicializar</h3><p class="muted">Recria os dados mestres e o cenário de demonstração (6 ordens em estágios diferentes). Seu progresso nos exercícios é zerado.</p><div class="toolbar">${btn('Restaurar cenário de demonstração', 'resetAsk', { demo: 1 }, 'neg')}${btn('Começar só com dados mestres', 'resetAsk', { demo: 0 }, 'neg')}</div></div></div>`;
+    <div class="sec"><h3>Reinicializar</h3><p class="muted">${MODE === 'free' ? 'Apaga os documentos do modo livre. Você pode recomeçar só com os dados mestres ou com os dados de exemplo (6 ordens em estágios diferentes). O modo exercícios não é afetado.' : 'Recria os dados mestres e o cenário de demonstração (6 ordens em estágios diferentes). Seu progresso nos exercícios é zerado. O modo livre não é afetado.'}</p><div class="toolbar">${btn('Restaurar cenário de demonstração', 'resetAsk', { demo: 1 }, 'neg')}${btn('Começar só com dados mestres', 'resetAsk', { demo: 0 }, 'neg')}</div></div></div>`;
 }
 
 /* ---------------- Treinamento ---------------- */
@@ -2309,14 +2372,14 @@ function viewFor() {
     case 'agr': return id ? vAgr(id) : vAgrList(); case 'rt': return id ? vRT(id) : vRTList();
     case 'bp': case 'loc': case 'zone': case 'lane': case 'sched': case 'res': case 'prod': return vMD(a);
     case 'analytics': return vAnalytics(); case 'log': return vLog(); case 'cfg': return vCfg(); case 'sys': return vSys();
-    case 'ex': return vEx(); case 'gloss': return vGloss();
+    case 'ex': return MODE === 'free' ? vLaunchpad() : vEx(); case 'gloss': return vGloss();
   }
   return vLaunchpad();
 }
 function shell() {
   const t = U.app === 'home' ? 'Página inicial' : appTitle(U.app);
   return `<header class="shell"><button class="ibtn logo" data-a="home" aria-label="Página inicial"><b>SAP</b><span>Transportation Management</span></button>
-    ${U.app !== 'home' ? `<button class="ibtn" data-a="back" aria-label="Voltar">←</button>` : ''}<span class="title">${esc(t)}</span><span class="sp"></span>
+    ${U.app !== 'home' ? `<button class="ibtn" data-a="back" aria-label="Voltar">←</button>` : ''}<span class="title">${esc(t)}</span><button class="mode-chip ${MODE}" data-a="modeSwitch" title="Voltar à tela inicial e escolher o modo">${MODE === 'free' ? 'Modo livre' : 'Modo exercícios'} <span aria-hidden="true">⇄</span></button><span class="sp"></span>
     <input class="search" id="gsearch" placeholder="Nº do documento ou app" aria-label="Pesquisar documento ou app">
     <span class="clock clock-l" title="Data do sistema">${dt(S.clock)}</span>
     <button class="ibtn" data-a="clock" data-h="1" title="Avançar 1 hora">+1h</button><button class="ibtn" data-a="clock" data-h="24" title="Avançar 1 dia">+1d</button>
@@ -2330,11 +2393,12 @@ function crumbs() {
 function footer() {
   const m = U.lastMsgs; const c = t => m.filter(x => x.type === t).length;
   const last = m[m.length - 1] || S.log[0];
-  return `<div class="footer"><div class="msgs">${['E', 'W', 'S'].filter(t => c(t)).map(t => `<button class="mcount" data-a="pop"><span class="mi ${t}">${{ E: '✕', W: '!', S: '✓' }[t]}</span>${c(t)}</button>`).join('')}<button class="mcount" data-a="pop" title="Mensagens">Mensagens</button><span class="last">${last ? `<span class="mi ${last.type}">${{ S: '✓', W: '!', E: '✕', I: 'i' }[last.type]}</span> ${esc(last.text)}` : ''}</span></div>${btn('Exercícios', 'go', { app: 'ex' })}</div>
+  return `<div class="footer"><div class="msgs">${['E', 'W', 'S'].filter(t => c(t)).map(t => `<button class="mcount" data-a="pop"><span class="mi ${t}">${{ E: '✕', W: '!', S: '✓' }[t]}</span>${c(t)}</button>`).join('')}<button class="mcount" data-a="pop" title="Mensagens">Mensagens</button><span class="last">${last ? `<span class="mi ${last.type}">${{ S: '✓', W: '!', E: '✕', I: 'i' }[last.type]}</span> ${esc(last.text)}` : ''}</span></div>${MODE === 'free' ? btn('Fluxo do processo', 'go', { app: 'home' }) : btn('Exercícios', 'go', { app: 'ex' })}</div>
   ${U.pop ? `<div class="pop" role="dialog" aria-label="Mensagens"><div class="row" style="justify-content:space-between"><b>Mensagens da última ação</b><button class="btn ghost" data-a="go" data-app="log">Ver log completo</button></div>${(m.length ? m : S.log.slice(0, 8)).map(x => `<div class="row"><span class="mi ${x.type}">${{ S: '✓', W: '!', E: '✕', I: 'i' }[x.type]}</span><div style="min-width:0">${esc(x.text)}${x.ref && docApp(x.ref) ? ' ' + L(x.ref) : ''}</div></div>`).join('')}</div>` : ''}`;
 }
 function render() {
   const root = document.getElementById('app'); if (!root) return;
+  if (!MODE) { root.innerHTML = vModePicker() + renderDlg() + `<div class="toast" id="toast" ${U.toast ? '' : 'hidden'}>${U.toast ? esc(U.toast.text) : ''}</div>`; return; }
   const y = window.scrollY; const key = U.app + '|' + U.id;
   let main = '';
   try { main = viewFor(); } catch (e) { console.error(e); main = `<div class="strip E"><span class="mi E">✕</span>Erro ao exibir a tela: ${esc(e.message)}</div>`; }
@@ -2452,6 +2516,8 @@ const A = {
   exportJ: () => { const j = JSON.stringify(S); dialog('Exportar estado', `<p class="muted small">Copie e guarde este JSON. Para restaurar, use “Importar estado”.</p><textarea id="dl_json" class="inp" style="height:260px;width:100%;font-family:var(--f-mono);font-size:11px" readonly>${esc(j)}</textarea>`, [{ l: 'Copiar', cls: 'pri', fn: () => { const t = document.getElementById('dl_json'); (navigator.clipboard ? navigator.clipboard.writeText(j) : Promise.reject()).then(() => toast('JSON copiado.')).catch(() => { t.focus(); t.select(); toast('Selecionado: use Ctrl+C.'); }); } }], true); },
   importJ: () => dialog('Importar estado', '<textarea id="dl_json" class="inp" style="height:260px;width:100%;font-family:var(--f-mono);font-size:11px" placeholder="Cole aqui o JSON exportado"></textarea>', [{ l: 'Importar', cls: 'pri', fn: () => { try { const x = JSON.parse(val('dl_json')); if (x.v !== 3 || !x.md) throw new Error('formato'); S = x; U.dlg = null; U.app = 'home'; U.id = null; act(() => T.ok('Estado importado.')); } catch (e) { toast('JSON inválido para este simulador.', 'E'); } } }], true),
   resetAsk: d => dialog('Reinicializar sistema', `<p>${d.demo === '1' ? 'Restaurar o cenário de demonstração' : 'Começar apenas com dados mestres'}? Todos os documentos atuais serão apagados.</p>`, [{ l: 'Reinicializar', cls: 'neg', fn: () => { newState(d.demo === '1'); U.dlg = null; U.lastMsgs = []; U.ck = { sel: new Set(), doc: null, res: null, mode: 'RD', zone: '', showPlanned: false }; U.stack = []; save(); go('home', null, null, false); toast('Sistema reinicializado.'); } }]),
+  modeSwitch: () => { save(); flushSave(); MODE = null; U.toast = null; DBREF = null; U.cloud = false; U.dlg = null; U.menu = null; U.pop = false; render(); window.scrollTo(0, 0); },
+  modeEnter: d => enterMode(d.m),
   exToggle: d => { const e = EXERCISES.find(x => x.id === d.id); const cur = U.exOpen[d.id] ?? (!exDone(e) && EXERCISES.findIndex(x => !exDone(x)) === EXERCISES.indexOf(e)); U.exOpen[d.id] = !cur; render(); },
   exGo: d => { const e = EXERCISES.find(x => x.id === d.id); go(e.app, e.appId || null, e.appTab || null); }
 };
@@ -2517,18 +2583,48 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'gsearch') {
     const q = e.target.value.trim(); if (!q) return;
     if (/^\d{8,10}$/.test(q)) { const a = docApp(q); const exists = a && ({ fwo: T.fwo, fwq: T.fwq, otr: T.otr, fu: T.fu, fo: T.fo, fsd: T.fsd, fwsd: T.fwsd, rfq: T.rfq }[a])(q); if (exists) return openDoc(q); return toast('Documento ' + q + ' não encontrado.', 'E'); }
-    const hit = Object.entries(APPS).find(([k, v]) => (v[0] + ' ' + v[1]).toLowerCase().includes(q.toLowerCase())); if (hit) go(hit[0]); else toast('Nada encontrado para “' + q + '”.', 'W');
+    const hit = Object.entries(APPS).filter(([k]) => !(MODE === 'free' && k === 'ex')).find(([k, v]) => (v[0] + ' ' + v[1]).toLowerCase().includes(q.toLowerCase())); if (hit) go(hit[0]); else toast('Nada encontrado para “' + q + '”.', 'W');
   }
 });
 
 /* ---------------- inicialização ---------------- */
 (function init() {
   try { const t = localStorage.getItem('sap-tm-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { }
-  const had = load();
-  if (!had) save();
-  render();
-  setTimeout(connectDB, 50);
+  render(); // tela inicial: escolha do modo
 })();
+function resetUI() {
+  Object.assign(U, { app: 'home', id: null, tab: null, stack: [], f: {}, sel: new Set(), dlg: null, pop: false, form: null, menu: null, ck: { sel: new Set(), doc: null, res: null, mode: 'RD', zone: '', showPlanned: false }, exOpen: {}, lastMsgs: [] });
+}
+function enterMode(m) {
+  MODE = m; DBREF = null; U.cloud = false; resetUI();
+  try { localStorage.setItem('sap-tm-mode', m); } catch (e) { }
+  // Modo exercícios começa com o cenário de demonstração; modo livre começa só com dados mestres.
+  if (!load()) { newState(m === 'ex'); S.savedAt = null; }
+  render(); window.scrollTo(0, 0);
+  setTimeout(connectDB, 50);
+}
+function modeSummary(m) {
+  const x = readState(m); if (!x) return null;
+  const docs = x.fwo.length + x.fwq.length + x.otr.length + x.fo.length;
+  let done = null;
+  if (m === 'ex') { const keep = S; try { S = x; done = EXERCISES.filter(exDone).length; } catch (e) { } S = keep; }
+  return { docs, done, savedAt: x.savedAt, clock: x.clock };
+}
+function vModePicker() {
+  const ex = modeSummary('ex'), fr = modeSummary('free');
+  let last = null; try { last = localStorage.getItem('sap-tm-mode'); } catch (e) { }
+  const when = s => s && s.savedAt ? 'Última gravação ' + new Date(s.savedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  const card = (m, title, tag, desc, bullets, status, cta) => `<section class="mode-card ${m}${last === m ? ' last' : ''}"><div class="mode-ic">${ic(m === 'ex' ? 'school' : 'cockpit')}</div><div class="mode-tag">${esc(tag)}</div><h2>${esc(title)}</h2><p>${esc(desc)}</p><ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul><div class="mode-st">${status}</div><button class="btn pri" data-a="modeEnter" data-m="${m}">${esc(cta)}</button></section>`;
+  return `<header class="shell"><span class="ibtn logo" style="cursor:default"><b>SAP</b><span>Transportation Management</span></span><span class="sp"></span><button class="ibtn" data-a="theme" title="Tema claro/escuro" aria-label="Alternar tema" style="font-size:18px">◐</button></header>
+  <main class="mode-pick"><h1>Simulador SAP TM · S/4HANA</h1><p class="muted lead">Como você quer treinar hoje? Os dois modos usam o mesmo sistema, mas cada um guarda seus próprios documentos: o que você fizer no modo livre não mexe no progresso dos exercícios.</p>
+  <div class="mode-grid">
+  ${card('ex', 'Modo exercícios', 'Guiado', 'Roteiro com 19 exercícios que seguem os capítulos do livro e são verificados automaticamente.', ['Cenário de demonstração com ordens em vários estágios', 'Passo a passo e dicas em cada exercício', 'Progresso salvo e marcado como concluído'],
+    ex ? `<b>${ex.done ?? 0} de ${EXERCISES.length}</b> exercícios concluídos<br><span class="muted small">${esc(when(ex))}</span>` : '<span class="muted">Ainda não iniciado</span>', ex ? 'Continuar exercícios' : 'Começar exercícios')}
+  ${card('free', 'Modo livre', 'Sem roteiro', 'Simule os processos do jeito que quiser, sem exercícios nem verificação, como num sistema de verdade.', ['Começa só com os dados mestres: você cria tudo', 'Pedido → UF → planejamento → OF → transportadora → execução → liquidação', 'Pode carregar dados de exemplo ou zerar quando quiser'],
+    fr ? `<b>${fr.docs}</b> documento${fr.docs === 1 ? '' : 's'} criado${fr.docs === 1 ? '' : 's'} · data do sistema ${esc(dt(fr.clock))}<br><span class="muted small">${esc(when(fr))}</span>` : '<span class="muted">Ambiente novo</span>', fr ? 'Continuar simulação livre' : 'Entrar no modo livre')}
+  </div>
+  <p class="muted small" style="margin-top:22px">Você pode trocar de modo a qualquer momento pelo botão de modo na barra superior. Projeto educacional independente, sem vínculo com a SAP SE. SAP, S/4HANA e SAP TM são marcas da SAP SE, citadas apenas para fins de estudo.</p></main>`;
+}
 
 </script>
 </body>

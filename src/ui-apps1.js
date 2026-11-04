@@ -66,11 +66,33 @@ function tileKPI(a) {
     default: return null;
   }
 }
+const FLOW = [
+  ['1', 'Pedido', 'OE, cotação ou pedido de venda', ['fwo', 'otr', 'fwq']],
+  ['2', 'Unidades de frete', 'FUBR cria as UFs', ['fu']],
+  ['3', 'Planejamento', 'Cockpit, otimizador, capacidade', ['cockpit', 'cap']],
+  ['4', 'Ordem de frete', 'OF rodoviária ou booking', ['fo', 'fb']],
+  ['5', 'Subcontratação', 'Seleção, tendering, portal', ['tender', 'portal']],
+  ['6', 'Execução', 'Eventos e rastreamento', ['em']],
+  ['7', 'Liquidação', 'Compra (DLF) e venda (DLE)', ['fsd', 'fwsd']],
+  ['8', 'Análise', 'Custos e rentabilidade', ['analytics']]
+];
+function vFlow() {
+  return `<section class="lp-group"><h2>Fluxo do processo <small>clique numa etapa para abrir o app</small></h2><ol class="flow">${FLOW.map(([n, t, s, apps]) => `<li><div class="fl-hd"><span class="fl-n">${n}</span><b>${esc(t)}</b></div><div class="muted small">${esc(s)}</div><div class="fl-apps">${apps.map(a => { const k = tileKPI(a); return `<button class="fl-app" data-a="go" data-app="${a}"><span>${esc(APPS[a][0])}</span>${k ? `<span class="fl-k">${esc(k[0])} <small>${esc(k[1])}</small></span>` : ''}</button>`; }).join('')}</div></li>`).join('')}</ol></section>`;
+}
 function vLaunchpad() {
-  const groups = GROUPS.map(([g, ref, apps]) => `<section class="lp-group"><h2>${esc(g)} <small>${esc(ref)}</small></h2><div class="tiles">${apps.map(a => {
+  const free = MODE === 'free';
+  const groups = (free ? [...GROUPS.slice(1), ['Apoio', 'consulta', ['gloss']]] : GROUPS).map(([g, ref, apps]) => `<section class="lp-group"><h2>${esc(g)} <small>${esc(ref)}</small></h2><div class="tiles">${apps.map(a => {
     const [t, s, i] = APPS[a]; const k = tileKPI(a);
     return `<button class="tile" data-a="go" data-app="${a}"><span class="t">${esc(t)}</span><span class="s">${esc(s)}</span><span class="k">${ic(i)}${k ? `<span><span class="v">${esc(k[0])}</span><br><span class="u">${esc(k[1])}</span></span>` : ''}</span></button>`;
   }).join('')}</div></section>`).join('');
+  if (free) {
+    const empty = !S.fwo.length && !S.fwq.length && !S.otr.length && !S.fo.length;
+    return `<div class="lp-head"><div><h1>Simulador SAP TM · Modo livre</h1><div class="muted">${esc(S.md.org.company)} · Org. vendas ${S.md.org.salesOrg} · Org. compras ${S.md.org.purchOrg} · Unid. planejamento ${S.md.org.planOrg}</div></div>
+    <div class="toolbar">${btn('Criar ordem de expedição', 'go', { app: 'fwo-new' }, 'pri')}${btn('Criar pedido de venda', 'go', { app: 'so-new' })}${btn('Criar cotação', 'go', { app: 'fwq-new' })}</div></div>
+    ${empty ? `<div class="sec start-free"><div><h3 style="margin:0 0 4px">Ambiente pronto para simular</h3><p class="muted" style="margin:0">Só os dados mestres estão carregados (parceiros, locais, rotas, veículos, acordos e tabelas). Crie seu primeiro pedido e leve-o pelo fluxo abaixo, ou carregue os dados de exemplo para ter documentos em vários estágios.</p></div><div class="toolbar">${btn('Criar ordem de expedição', 'go', { app: 'fwo-new' }, 'pri')}${btn('Carregar dados de exemplo', 'resetAsk', { demo: 1 })}</div></div>`
+      : `<div class="note" style="margin-bottom:18px">Modo livre: sem exercícios nem verificação. Use os apps na ordem que quiser. O tempo só avança quando você manda (+1h / +1d na barra superior). Para recomeçar, vá em Sistema › Reinicializar.</div>`}
+    ${vFlow()}${groups}<p class="muted" style="margin-top:24px;font-size:12px">Projeto educacional independente, sem vínculo com a SAP SE. SAP, S/4HANA e SAP TM são marcas da SAP SE, citadas apenas para fins de estudo. Os dados ficam salvos só no seu navegador.</p>`;
+  }
   return `<div class="lp-head"><div><h1>Simulador SAP TM · S/4HANA</h1><div class="muted">${esc(S.md.org.company)} · Org. vendas ${S.md.org.salesOrg} · Org. compras ${S.md.org.purchOrg} · Unid. planejamento ${S.md.org.planOrg}</div></div>
   <div class="toolbar">${btn('Exercícios guiados', 'go', { app: 'ex' }, 'pri')}${btn('Criar ordem de expedição', 'go', { app: 'fwo-new' })}</div></div>
   <div class="note" style="margin-bottom:18px">Ambiente de treinamento com dados fictícios. O fluxo segue o livro: pedido (OE) → unidades de frete → planejamento (cockpit/otimizador) → ordem de frete ou booking → seleção de transportadora/tendering → execução e eventos → liquidação e rentabilidade. A data do sistema só avança quando você manda (botão do relógio na barra superior).</div>${groups}<p class="muted" style="margin-top:24px;font-size:12px">Projeto educacional independente, sem vínculo com a SAP SE. SAP, S/4HANA e SAP TM são marcas da SAP SE, citadas apenas para fins de estudo. Os dados ficam salvos só no seu navegador.</p>`;

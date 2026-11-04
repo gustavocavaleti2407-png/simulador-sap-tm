@@ -909,7 +909,7 @@ function newState(withDemo = true) {
   S = { v: 3, clock: '2026-10-12T08:00', seq: {}, md: SEED_MASTER(), fwq: [], fwo: [], otr: [], fu: [], fo: [], rfq: [], fsd: [], fwsd: [], log: [], flags: {}, savedAt: null };
   if (withDemo) buildDemo();
   OUT.length = 0;
-  S.log = [{ type: 'I', text: 'Sistema inicializado com dados de demonstração. Data do sistema: 12/10/2026 08:00.', at: S.clock }];
+  S.log = [{ type: 'I', text: (withDemo ? 'Sistema inicializado com dados de demonstração.' : 'Sistema inicializado só com dados mestres.') + ' Data do sistema: 12/10/2026 08:00.', at: S.clock }];
   S.flags = {};
   S.seed = { locs: S.md.locs.length, lanes: S.md.lanes.length, bps: S.md.bps.length, fwo: S.fwo.map(x => x.id), fo: S.fo.map(x => x.id), fsd: S.fsd.map(x => x.id), fwsd: S.fwsd.map(x => x.id), otr: S.otr.map(x => x.id) };
   return S;

@@ -1,7 +1,11 @@
 /* ==========================================================================
    Núcleo da interface: persistência, navegação, componentes Fiori
    ========================================================================== */
-const LS_KEY = 'sap-tm-simulador-v3';
+/* Modo de uso: 'ex' (exercícios guiados) ou 'free' (simulação livre). Cada modo tem seu próprio estado. */
+let MODE = null;
+const LS_KEYS = { ex: 'sap-tm-simulador-v3', free: 'sap-tm-simulador-livre-v3' };
+const CLOUD_DOC = { ex: 'tm_state', free: 'tm_state_livre' };
+const lsKey = () => LS_KEYS[MODE || 'ex'];
 const U = { app: 'home', id: null, tab: null, stack: [], f: {}, sel: new Set(), dlg: null, pop: false, toast: null, form: null, ck: { sel: new Set(), doc: null, res: null, mode: 'RD', zone: '', showPlanned: false }, exOpen: {}, lastMsgs: [] };
 let DB = null, DBREF = null, saveTimer = null;
 
@@ -14,24 +18,28 @@ const d10 = iso => iso ? dt(iso.slice(0, 10)) : '—';
 
 /* ---------- persistência ---------- */
 function save() {
+  if (!MODE || !S) return;
   S.savedAt = new Date().toISOString();
-  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) { }
+  try { localStorage.setItem(lsKey(), JSON.stringify(S)); } catch (e) { }
   if (DBREF) { clearTimeout(saveTimer); saveTimer = setTimeout(() => { DBREF.set({ json: JSON.stringify(S), savedAt: S.savedAt }).catch(() => { }); }, 1200); }
 }
-function load() {
-  try { const raw = localStorage.getItem(LS_KEY); if (raw) { const x = JSON.parse(raw); if (x && x.v === 3) { S = x; return true; } } } catch (e) { }
-  newState(true); return false;
-}
+function flushSave() { if (DBREF && S) { clearTimeout(saveTimer); DBREF.set({ json: JSON.stringify(S), savedAt: S.savedAt || new Date().toISOString() }).catch(() => { }); } }
+function readState(m) { try { const raw = localStorage.getItem(LS_KEYS[m]); if (raw) { const x = JSON.parse(raw); if (x && x.v === 3) return x; } } catch (e) { } return null; }
+function load() { const x = readState(MODE); if (x) { S = x; return true; } return false; }
 async function connectDB() {
   try {
-    if (!window.claude || !window.claude.use) return;
+    if (!window.claude || !window.claude.use || !MODE) return;
+    const m = MODE;
     const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
     if (!db || !user) return;
     const uid = await user.id(); if (!uid) return;
-    DBREF = db.collection('data/users/' + uid).doc('tm_state');
-    const snap = await DBREF.get();
+    if (MODE !== m) return;
+    const ref = db.collection('data/users/' + uid).doc(CLOUD_DOC[m]);
+    const snap = await ref.get();
+    if (MODE !== m) return;
+    DBREF = ref;
     const data = snap && (snap.data ? (typeof snap.data === 'function' ? snap.data() : snap.data) : null);
-    if (data && data.json && (!S.savedAt || data.savedAt > S.savedAt)) { const x = JSON.parse(data.json); if (x.v === 3) { S = x; try { localStorage.setItem(LS_KEY, data.json); } catch (e) { } render(); toast('Estado restaurado do armazenamento na nuvem.'); } }
+    if (data && data.json && (!S.savedAt || data.savedAt > S.savedAt)) { const x = JSON.parse(data.json); if (x.v === 3) { S = x; try { localStorage.setItem(lsKey(), data.json); } catch (e) { } render(); toast('Estado restaurado do armazenamento na nuvem.'); } }
     else save();
     U.cloud = true; render();
   } catch (e) { }
